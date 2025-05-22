@@ -1,0 +1,16 @@
+# Ignore Python virtual environment
+venv/
+
+# Bytecode files
+__pycache__/
+*.pyc
+
+# Editor settings
+.vscode/
+
+# Logs
+*.log
+
+# Mac/Windows system files
+.DS_Store
+Thumbs.db
