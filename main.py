@@ -104,7 +104,7 @@ def chat(filepath):
     memory = ChatMemoryBuffer.from_defaults(token_limit=1000)
     retriever = index.as_retriever(similarity_top_k=8)
 
-    print("\n🤖 Smart bot is ready. Ask questions about the document. Type 'exit' to quit.\n")
+    print("\n Bot is ready. Ask questions about the document. Type 'exit' to quit.\n")
 
     while True:
         try:
