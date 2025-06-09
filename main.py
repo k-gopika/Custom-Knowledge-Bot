@@ -1,33 +1,33 @@
-import asyncio
-import sys
-
-if sys.platform.startswith("win"):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 import os
+import sys
 import time
 import random
+import asyncio
 import pinecone
-import streamlit as st 
+import streamlit as st
 from dotenv import load_dotenv
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from pinecone import Pinecone, ServerlessSpec
+
+from llama_index.core import (
+    VectorStoreIndex, Settings, StorageContext, load_index_from_storage
+)
+from llama_index.core.chat_engine import ContextChatEngine
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.node_parser import SentenceSplitter, SimpleNodeParser
 from llama_index.readers.file import PyMuPDFReader
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.vector_stores.pinecone import PineconeVectorStore
+from llama_index.core.storage.docstore import SimpleDocumentStore
+from llama_index.core.storage.index_store import SimpleIndexStore
+
 from langchain_ollama import ChatOllama
 from llama_index.llms.langchain import LangChainLLM
-from llama_index.core import (
-    VectorStoreIndex,
-    Settings,
-    StorageContext,
-    load_index_from_storage,
-    )
-from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.core.chat_engine import ContextChatEngine
-from llama_index.vector_stores.pinecone import PineconeVectorStore
-from pinecone import Pinecone, ServerlessSpec # Pinecone vector store
-from llama_index.core.node_parser import SimpleNodeParser
-import asyncio
-import sys
 
+# Async fix for Windows
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+# ---------------------- Tarot Deck ----------------------
 tarot_deck = [
     {
         "name": "The Fool",
@@ -80,28 +80,36 @@ def draw_cards(n=3):
         card['orientation'] = random.choice(["upright", "reversed"])
     return cards
 
+
+# ---------------------- Load PDF ----------------------
 def load_documents(filepath):
     loader = PyMuPDFReader()
     return loader.load(filepath)
 
-def classify_intent(question):
-    q = question.lower()
-    if any(w in q for w in ["will", "can", "should", "do i"]):
-        return "yes_no"
-    elif any(w in q for w in ["when", "how long", "time"]):
-        return "timeline"
-    elif any(w in q for w in ["why", "reason", "cause"]):
-        return "insight"
-    elif any(w in q for w in ["what should", "focus", "advice", "guidance"]):
-        return "guidance"
-    else:
-        return "general"
-    
 
+# Connect to your local LLaMA 3.2 model
+llm = ChatOllama(model="llama3.2")
+
+def classify_intent(question: str) -> str:
+    prompt = f"""Classify the following question into ONLY one of these categories:
+    - yes_no
+    - timeline
+    - insight
+    - guidance
+    - general
+    Respond with one of the above ONLY (lowercase, no punctuation).
+
+    Question: {question}
+    Intent:"""
+    
+    response = llm.invoke(prompt)
+    intent = response.content.strip().lower()
+
+    valid = {"yes_no", "timeline", "insight", "guidance", "general"}
+    return intent if intent in valid else "general"
 
 def Setup_Model():
     embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    llm = ChatOllama(model="llama3.2")  # <--- changed here to gemma:2b
     llm_wrapped = LangChainLLM(llm)
     Settings.llm = llm_wrapped
     Settings.embed_model = embed_model
@@ -118,12 +126,7 @@ PINECONE_ENV = "us-east-1"
 pc = Pinecone(api_key=PINECONE_API_KEY)
 region_spec = ServerlessSpec(cloud='aws', region='us-east-1')
 
-
-
-from llama_index.core.storage.docstore import SimpleDocumentStore
-from llama_index.core.storage.index_store import SimpleIndexStore
-
-
+# ---------------------- Index Management ----------------------
 def GetIndex(filepath, force_rebuild=False):
     persist_dir = "./storage"
     if not os.path.exists(persist_dir):
