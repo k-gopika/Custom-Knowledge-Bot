@@ -189,10 +189,11 @@ st.markdown("Ask questions about tarot cards. The model uses interpretations fro
 if 'chat_engine' not in st.session_state:                          # <-- NEW: Persistent session state
     with st.spinner("Setting up model and index (this may take a minute)..."):   # <-- NEW: Loading spinner
         Setup_Model()                                                # <-- SAME function call
-        index = GetIndex("sample_tarot_meanings.pdf") 
-        if not os.path.exists("sample_tarot_meanings.pdf"):
-         st.error("Tarot meanings PDF not found.")
-         st.stop()
+        pdf_path = "sample_tarot_meanings.pdf"
+        if not os.path.exists(pdf_path):
+          st.error("Tarot meanings PDF not found.")
+          st.stop()
+        index = GetIndex(pdf_path)
     
         # <-- SAME but you can change file path here
         retriever = index.as_retriever(similarity_top_k=8)
