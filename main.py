@@ -119,7 +119,9 @@ def Setup_Model():
 load_dotenv()
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 if not PINECONE_API_KEY:
-    raise EnvironmentError("PINECONE_API_KEY not found in .env file")
+    st.error("Pinecone API key missing. Please check your .env file.")
+    st.stop()
+
 PINECONE_INDEX_NAME = "llama-index"
 PINECONE_ENV = "us-east-1"
 # Pinecone v3 client
@@ -187,7 +189,12 @@ st.markdown("Ask questions about tarot cards. The model uses interpretations fro
 if 'chat_engine' not in st.session_state:                          # <-- NEW: Persistent session state
     with st.spinner("Setting up model and index (this may take a minute)..."):   # <-- NEW: Loading spinner
         Setup_Model()                                                # <-- SAME function call
-        index = GetIndex("sample_tarot_meanings.pdf")                   # <-- SAME but you can change file path here
+        index = GetIndex("sample_tarot_meanings.pdf") 
+        if not os.path.exists("sample_tarot_meanings.pdf"):
+         st.error("Tarot meanings PDF not found.")
+         st.stop()
+    
+        # <-- SAME but you can change file path here
         retriever = index.as_retriever(similarity_top_k=8)
         memory = ChatMemoryBuffer.from_defaults(token_limit=1000)
         chat_engine = ContextChatEngine.from_defaults(
@@ -236,3 +243,5 @@ if user_input:
 if st.session_state.chat_history:                                 # <-- NEW: Show conversation history
     for role, text in st.session_state.chat_history:
         st.write(f"**{role}:** {text}")
+
+
