@@ -26,7 +26,9 @@ from llama_index.llms.langchain import LangChainLLM
 # Async fix for Windows
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    
+
+from config import PINECONE_INDEX_NAME, PINECONE_ENV
+
 # ---------------------- Tarot Deck ----------------------
 tarot_deck = [
     {
@@ -122,8 +124,6 @@ if not PINECONE_API_KEY:
     st.error("Pinecone API key missing. Please check your .env file.")
     st.stop()
 
-PINECONE_INDEX_NAME = "llama-index"
-PINECONE_ENV = "us-east-1"
 # Pinecone v3 client
 pc = Pinecone(api_key=PINECONE_API_KEY)
 region_spec = ServerlessSpec(cloud='aws', region='us-east-1')
